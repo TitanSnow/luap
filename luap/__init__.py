@@ -1,3 +1,4 @@
+from os.path import expanduser
 from ffilupa import *
 from ffilupa.py_from_lua import *
 from pygments.lexers import LuaLexer
@@ -6,6 +7,7 @@ from prompt_toolkit.shortcuts import prompt
 from prompt_toolkit.layout.lexers import PygmentsLexer
 from prompt_toolkit.styles import style_from_pygments
 from prompt_toolkit.token import Token
+from prompt_toolkit.history import FileHistory
 
 
 class LuaRepl:
@@ -22,6 +24,7 @@ class LuaRepl:
             runtime = LuaRuntime()
         self._lua = runtime
         self._laststate = True
+        self._history = FileHistory(expanduser('~/.luap_history'))
 
     def run(self):
         try:
@@ -74,7 +77,8 @@ class LuaRepl:
         return prompt(
             get_prompt_tokens=get_token,
             lexer=PygmentsLexer(LuaLexer),
-            style=self.PROMPT_STYLE
+            style=self.PROMPT_STYLE,
+            history=self._history
         )
 
     def incomplete(self, code):
