@@ -81,7 +81,8 @@ class LuaRepl:
             get_prompt_tokens=get_token,
             lexer=PygmentsLexer(LuaLexer),
             style=self.PROMPT_STYLE,
-            history=self._history
+            history=self._history,
+            enable_system_bindings=True
         )
 
     def incomplete(self, code):
