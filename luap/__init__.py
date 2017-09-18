@@ -1,23 +1,32 @@
 from ffilupa import *
 from ffilupa.py_from_lua import *
 from pygments.lexers import LuaLexer
+from pygments.styles.default import DefaultStyle
 from prompt_toolkit.shortcuts import prompt
 from prompt_toolkit.layout.lexers import PygmentsLexer
+from prompt_toolkit.styles import style_from_pygments
+from prompt_toolkit.token import Token
 
 
 class LuaRepl:
     PROMPT1 = '>>> '
     PROMPT2 = '... '
+    PROMPT_STYLE = style_from_pygments(DefaultStyle, {
+        Token.Succ: '#ansigreen',
+        Token.Fail: '#ansired',
+        Token.Dot: '#ansiblue',
+    })
 
     def __init__(self, runtime=None):
         if runtime is None:
             runtime = LuaRuntime()
         self._lua = runtime
+        self._laststate = True
 
     def run(self):
         try:
             while True:
-                self.run_single()
+                self._laststate = self.run_single()
         except EOFError:
             pass
 
@@ -47,9 +56,25 @@ class LuaRepl:
         return '\n'.join(lns)
 
     def read_line(self, firstline):
+        def get_token(cli):
+            if firstline:
+                return [
+                    (
+                        (Token.Succ if self._laststate else Token.Fail),
+                        self.PROMPT1,
+                    )
+                ]
+            else:
+                return [
+                    (
+                        Token.Dot,
+                        self.PROMPT2,
+                    )
+                ]
         return prompt(
-            self.PROMPT1 if firstline else self.PROMPT2,
-            lexer=PygmentsLexer(LuaLexer)
+            get_prompt_tokens=get_token,
+            lexer=PygmentsLexer(LuaLexer),
+            style=self.PROMPT_STYLE
         )
 
     def incomplete(self, code):
