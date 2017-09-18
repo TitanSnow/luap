@@ -29,7 +29,10 @@ class LuaRepl:
     def run(self):
         try:
             while True:
-                self._laststate = self.run_single()
+                try:
+                    self._laststate = self.run_single()
+                except KeyboardInterrupt:
+                    self._laststate = False
         except EOFError:
             pass
 
