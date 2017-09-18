@@ -1,0 +1,10 @@
+build
+dist
+*.so
+*.egg-info
+*~
+__pycache__
+*.pyc
+.venv*
+.eggs
+*.ipynb
