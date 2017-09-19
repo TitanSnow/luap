@@ -23,7 +23,7 @@ class LuaRepl:
         Token.Succ: '#ansigreen',
         Token.Fail: '#ansired',
         Token.Dot: '#ansiblue',
-        Token.Version: 'underline #ansiyellow'
+        Token.Alter: 'bg:#ffff88 #444444'
     })
 
     def __init__(self, runtime=None):
@@ -110,10 +110,20 @@ class LuaRepl:
 
         def get_rprompt(cli):
             return [
-                (Token.Version, self._lua._G._VERSION),
-                (Token.Version, ', '),
-                (Token.Version, platform.python_implementation() + ' ' + '.'.join(platform.python_version_tuple()[:2])),
+                (Token.Alter, ' '),
+                (Token.Alter, self._lua._G._VERSION),
+                (Token.Alter, ', '),
+                (Token.Alter, platform.python_implementation() + ' ' + '.'.join(platform.python_version_tuple()[:2])),
+                (Token.Alter, ' '),
             ]
+
+        def get_toolbar(cli):
+            if cli.current_buffer.document.is_cursor_at_the_end:
+                return []
+            else:
+                return [
+                    (Token.Alter, ' [Meta+Enter] Execute ')
+                ]
 
         return prompt(
             get_prompt_tokens=partial(get_prompt, True),
@@ -124,6 +134,7 @@ class LuaRepl:
             multiline=True,
             get_continuation_tokens=partial(get_prompt, False),
             get_rprompt_tokens=get_rprompt,
+            get_bottom_toolbar_tokens=get_toolbar,
         )
 
     def incomplete(self, code):
