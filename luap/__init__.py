@@ -1,4 +1,5 @@
 from os.path import expanduser
+from functools import partial
 from ffilupa import *
 from ffilupa.py_from_lua import *
 from pygments.lexers import LuaLexer
@@ -8,6 +9,8 @@ from prompt_toolkit.layout.lexers import PygmentsLexer
 from prompt_toolkit.styles import style_from_pygments
 from prompt_toolkit.token import Token
 from prompt_toolkit.history import FileHistory
+from prompt_toolkit.key_binding.manager import KeyBindingManager
+from prompt_toolkit.keys import Keys
 
 
 class LuaRepl:
@@ -56,13 +59,7 @@ class LuaRepl:
         return True
 
     def read_code(self):
-        lns = [self.read_line(True)]
-        while self.incomplete('\n'.join(lns)):
-            lns.append(self.read_line(False))
-        return '\n'.join(lns)
-
-    def read_line(self, firstline):
-        def get_token(cli):
+        def get_token(firstline, cli, width=4):
             if firstline:
                 return [
                     (
@@ -77,12 +74,25 @@ class LuaRepl:
                         self.PROMPT2,
                     )
                 ]
+
+        manager = KeyBindingManager.for_prompt()
+        @manager.registry.add_binding(Keys.Enter)
+        def _(event):
+            code = event.current_buffer.text
+            if self.incomplete(code):
+                event.current_buffer.newline(copy_margin=not event.cli.in_paste_mode)
+            else:
+                buff = event.current_buffer
+                buff.accept_action.validate_and_handle(event.cli, buff)
+
         return prompt(
-            get_prompt_tokens=get_token,
+            get_prompt_tokens=partial(get_token, True),
             lexer=PygmentsLexer(LuaLexer),
             style=self.PROMPT_STYLE,
             history=self._history,
-            enable_system_bindings=True
+            key_bindings_registry=manager.registry,
+            multiline=True,
+            get_continuation_tokens=partial(get_token, False)
         )
 
     def incomplete(self, code):
