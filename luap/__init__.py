@@ -1,5 +1,6 @@
 from os.path import expanduser
 from functools import partial
+import platform
 from ffilupa import *
 from ffilupa.py_from_lua import *
 from pygments.lexers import LuaLexer
@@ -20,6 +21,7 @@ class LuaRepl:
         Token.Succ: '#ansigreen',
         Token.Fail: '#ansired',
         Token.Dot: '#ansiblue',
+        Token.Version: 'underline #ansiyellow'
     })
 
     def __init__(self, runtime=None):
@@ -85,6 +87,13 @@ class LuaRepl:
                 buff = event.current_buffer
                 buff.accept_action.validate_and_handle(event.cli, buff)
 
+        def get_rprompt(cli):
+            return [
+                (Token.Version, self._lua._G._VERSION),
+                (Token.Version, ', '),
+                (Token.Version, platform.python_implementation() + ' ' + '.'.join(platform.python_version_tuple()[:2])),
+            ]
+
         return prompt(
             get_prompt_tokens=partial(get_token, True),
             lexer=PygmentsLexer(LuaLexer),
@@ -92,7 +101,8 @@ class LuaRepl:
             history=self._history,
             key_bindings_registry=manager.registry,
             multiline=True,
-            get_continuation_tokens=partial(get_token, False)
+            get_continuation_tokens=partial(get_token, False),
+            get_rprompt_tokens=get_rprompt,
         )
 
     def incomplete(self, code):
