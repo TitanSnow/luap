@@ -84,11 +84,12 @@ class LuaRepl:
         @manager.registry.add_binding(Keys.Enter)
         def _(event):
             buff = event.current_buffer
-            code = buff.document.text
-            if self.incomplete(code):
+            doc = buff.document
+            code = doc.text
+            if not doc.is_cursor_at_the_end or self.incomplete(code):
                 buff.newline(copy_margin=not event.cli.in_paste_mode)
                 if not event.cli.in_paste_mode:
-                    if self.get_lua_indent(code):
+                    if self.get_lua_indent('\n'.join(doc.lines[:doc.cursor_position_row + 1])):
                         self.indent_curline(buff)
             else:
                 buff.accept_action.validate_and_handle(event.cli, buff)
@@ -102,7 +103,7 @@ class LuaRepl:
             buff = event.current_buffer
             doc = buff.document
             col = doc.cursor_position_col
-            if col >= 4 and doc.current_line[:col].isspace():
+            if col >= 4 and col % 4 == 0 and doc.current_line[:col].isspace():
                 self.indent_curline(buff, -1)
             else:
                 buff.delete_before_cursor()
