@@ -1,5 +1,6 @@
 from os.path import expanduser
 from functools import partial
+import re
 import platform
 from ffilupa import *
 from ffilupa.py_from_lua import *
@@ -12,6 +13,7 @@ from prompt_toolkit.token import Token
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.key_binding.manager import KeyBindingManager
 from prompt_toolkit.keys import Keys
+from prompt_toolkit.buffer import indent, unindent
 
 
 class LuaRepl:
@@ -61,7 +63,7 @@ class LuaRepl:
         return True
 
     def read_code(self):
-        def get_token(firstline, cli, width=4):
+        def get_prompt(firstline, cli, width=4):
             if firstline:
                 return [
                     (
@@ -80,11 +82,14 @@ class LuaRepl:
         manager = KeyBindingManager.for_prompt()
         @manager.registry.add_binding(Keys.Enter)
         def _(event):
-            code = event.current_buffer.text
+            buff = event.current_buffer
+            code = buff.document.text
             if self.incomplete(code):
-                event.current_buffer.newline(copy_margin=not event.cli.in_paste_mode)
+                buff.newline(copy_margin=not event.cli.in_paste_mode)
+                if not event.cli.in_paste_mode:
+                    if self.get_lua_indent(code):
+                        self.indent_curline(buff)
             else:
-                buff = event.current_buffer
                 buff.accept_action.validate_and_handle(event.cli, buff)
 
         def get_rprompt(cli):
@@ -95,13 +100,13 @@ class LuaRepl:
             ]
 
         return prompt(
-            get_prompt_tokens=partial(get_token, True),
+            get_prompt_tokens=partial(get_prompt, True),
             lexer=PygmentsLexer(LuaLexer),
             style=self.PROMPT_STYLE,
             history=self._history,
             key_bindings_registry=manager.registry,
             multiline=True,
-            get_continuation_tokens=partial(get_token, False),
+            get_continuation_tokens=partial(get_prompt, False),
             get_rprompt_tokens=get_rprompt,
         )
 
@@ -118,6 +123,26 @@ class LuaRepl:
 
     def print_results(self, *results):
         self._lua._G.print(*results)
+
+    def get_lua_indent(self, text):
+        prevline = text.rstrip().split('\n')[-1]
+        tripped = prevline.lstrip()
+        if (
+            re.search(r'^(?:if|for|while|repeat|else|elseif|do|then)(?:\W|$)', tripped) or
+            re.search(r'\{\s*$', tripped) or
+            re.search(r'(?:\W|^)function\W\s*(?:\w|\.|:)*\s*\(', tripped)
+        ) and not re.search(r'\W(?:end|until)\W*$', tripped):
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def indent_curline(buffer, count=1):
+        lineno = buffer.document.cursor_position_row
+        if count > 0:
+            indent(buffer, lineno, lineno + 1, count)
+        elif count < 0:
+            unindent(buffer, lineno, lineno + 1, -count)
 
 
 def embed(runtime=None):
