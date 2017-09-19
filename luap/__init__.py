@@ -80,6 +80,7 @@ class LuaRepl:
                 ]
 
         manager = KeyBindingManager.for_prompt()
+
         @manager.registry.add_binding(Keys.Enter)
         def _(event):
             buff = event.current_buffer
@@ -91,6 +92,20 @@ class LuaRepl:
                         self.indent_curline(buff)
             else:
                 buff.accept_action.validate_and_handle(event.cli, buff)
+
+        @manager.registry.add_binding(Keys.Tab)
+        def _(event):
+            event.current_buffer.insert_text(' ' * 4)
+
+        @manager.registry.add_binding(Keys.Backspace)
+        def _(event):
+            buff = event.current_buffer
+            doc = buff.document
+            col = doc.cursor_position_col
+            if col >= 4 and doc.current_line[:col].isspace():
+                self.indent_curline(buff, -1)
+            else:
+                buff.delete_before_cursor()
 
         def get_rprompt(cli):
             return [
